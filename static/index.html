@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Management - Ermolina</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        form {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+        }
+        input {
+            margin: 5px 0;
+            padding: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #user-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        #user-list li {
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #eee;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>User Management - Ermolina</h1>
+
+    <div>
+        <h2>Users</h2>
+        <ul id="user-list"></ul>
+    </div>
+
+    <div>
+        <h2>Create User</h2>
+        <form id="create-user-form">
+            <input type="text" id="username" placeholder="Username" required />
+            <input type="email" id="email" placeholder="Email" required />
+            <input type="text" id="full_name" placeholder="Full Name" />
+            <input type="password" id="password" placeholder="Password" required />
+            <button type="submit">Create User</button>
+        </form>
+    </div>
+
+    <div>
+        <h2>Update User</h2>
+        <form id="update-user-form">
+            <input type="number" id="update-user-id" placeholder="User ID" required />
+            <input type="text" id="update-username" placeholder="Username" />
+            <input type="email" id="update-email" placeholder="Email" />
+            <input type="text" id="update-full_name" placeholder="Full Name" />
+            <input type="password" id="update-password" placeholder="Password" />
+            <button type="submit">Update User</button>
+        </form>
+    </div>
+
+    <div>
+        <h2>Delete User</h2>
+        <form id="delete-user-form">
+            <input type="number" id="delete-user-id" placeholder="User ID" required />
+            <button type="submit">Delete User</button>
+        </form>
+    </div>
+
+    <div>
+        <h2>Login</h2>
+        <form id="login-form">
+            <input type="text" id="login-username" placeholder="Username" required />
+            <input type="password" id="login-password" placeholder="Password" required />
+            <button type="submit">Login</button>
+        </form>
+    </div>
+
+    <div>
+        <h2>User Info</h2>
+        <pre id="user-info"></pre>
+        <button onclick="getUserInfo()">Get My Info</button>
+    </div>
+
+    <script>
+        const apiBaseUrl = "http://localhost:8000";
+        let accessToken = "";
+
+        async function fetchUsers() {
+            try {
+                const response = await fetch(`${apiBaseUrl}/users/`);
+                const users = await response.json();
+                const userList = document.getElementById("user-list");
+                userList.innerHTML = "";
+                users.forEach((user) => {
+                    const li = document.createElement("li");
+                    li.textContent = `${user.id}: ${user.username} (${user.email})`;
+                    userList.appendChild(li);
+                });
+            } catch (error) {
+                console.error("Error fetching users:", error);
+            }
+        }
+
+        document.getElementById("create-user-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("username").value;
+            const email = document.getElementById("email").value;
+            const full_name = document.getElementById("full_name").value;
+            const password = document.getElementById("password").value;
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/register/`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ username, email, full_name, password }),
+                });
+
+                if (response.ok) {
+                    alert("User created successfully");
+                    fetchUsers();
+                } else {
+                    const errorData = await response.json();
+                    alert(`Error creating user: ${errorData.detail}`);
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Error creating user");
+            }
+        });
+
+        document.getElementById("update-user-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const userId = document.getElementById("update-user-id").value;
+            const username = document.getElementById("update-username").value;
+            const email = document.getElementById("update-email").value;
+            const full_name = document.getElementById("update-full_name").value;
+            const password = document.getElementById("update-password").value;
+
+            try {
+                const updateData = {};
+                if (username) updateData.username = username;
+                if (email) updateData.email = email;
+                if (full_name) updateData.full_name = full_name;
+                if (password) updateData.password = password;
+
+                const response = await fetch(`${apiBaseUrl}/users/${userId}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${accessToken}`
+                    },
+                    body: JSON.stringify(updateData),
+                });
+
+                if (response.ok) {
+                    alert("User updated successfully");
+                    fetchUsers();
+                } else {
+                    const errorData = await response.json();
+                    alert(`Error updating user: ${errorData.detail}`);
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Error updating user");
+            }
+        });
+
+        document.getElementById("delete-user-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const userId = document.getElementById("delete-user-id").value;
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/users/${userId}`, {
+                    method: "DELETE",
+                    headers: {
+                        "Authorization": `Bearer ${accessToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    alert("User deleted successfully");
+                    fetchUsers();
+                } else {
+                    const errorData = await response.json();
+                    alert(`Error deleting user: ${errorData.detail}`);
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Error deleting user");
+            }
+        });
+
+        document.getElementById("login-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const username = document.getElementById("login-username").value;
+            const password = document.getElementById("login-password").value;
+
+            try {
+                const headers = {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                };
+
+                const body = new URLSearchParams({
+                    grant_type: "password",
+                    username: username,
+                    password: password,
+                });
+
+                const response = await fetch(`${apiBaseUrl}/token`, {
+                    method: "POST",
+                    headers: headers,
+                    body: body,
+                });
+
+                const data = await response.json();
+                if (data.access_token) {
+                    accessToken = data.access_token;
+                    alert("Login successful!");
+                } else {
+                    alert("Login failed!");
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Login error!");
+            }
+        });
+
+        async function getUserInfo() {
+            if (!accessToken) {
+                document.getElementById('user-info').textContent = "Please login first!";
+                return;
+            }
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/users/me`, {
+                    method: 'GET',
+                    headers: { 
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('user-info').textContent = JSON.stringify(data, null, 2);
+                } else {
+                    const errorData = await response.json();
+                    document.getElementById('user-info').textContent = `Error: ${errorData.detail}`;
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById('user-info').textContent = "Error fetching user info";
+            }
+        }
+
+        fetchUsers();
+    </script>
+</body>
+</html>
